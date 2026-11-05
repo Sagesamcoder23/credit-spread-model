@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credit Spread Valuation Model | Samuel Aoulou</title>
+<meta name="description" content="A credit spread valuation model built in Excel for the KSU Student Managed Investment Fund. Signals, backtest, robustness checks and the reasoning behind each piece.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<script src="assets/chart.umd.js"></script>
+<style>
+:root{
+  --black:#2D2926; --ink:#1E1B19; --gold:#FFC629; --gold-deep:#D9A400; --gold-tint:#FFF3CC;
+  --gray:#B2B4B2; --gray-2:#6B6865; --line:#E4E2DE; --bg:#F6F5F2; --card:#FFFFFF;
+  --good:#3E7D3A; --good-tint:#DCEBD8; --bad:#C2571A; --bad-tint:#F6DCCB; --mid:#EEEDEA;
+  --radius:10px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Montserrat,system-ui,sans-serif;font-size:15px;line-height:1.6}
+a{color:inherit}
+.wrap{max-width:1140px;margin:0 auto;padding:0 24px}
+
+/* nav */
+nav.top{position:sticky;top:0;z-index:20;background:var(--black);border-bottom:3px solid var(--gold)}
+nav.top .wrap{display:flex;align-items:center;gap:22px;height:56px;overflow-x:auto;white-space:nowrap}
+nav.top .brand{font-weight:800;color:var(--gold);letter-spacing:.02em;margin-right:auto}
+nav.top a{color:#fff;text-decoration:none;font-size:13px;font-weight:600;opacity:.85}
+nav.top a:hover{opacity:1;color:var(--gold)}
+
+/* hero */
+header.hero{background:var(--black);color:#fff;padding:56px 0 64px;position:relative;overflow:hidden}
+header.hero:after{content:"";position:absolute;right:-120px;top:-120px;width:420px;height:420px;border-radius:50%;border:56px solid rgba(255,198,41,.09)}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+header.hero h1{font-size:44px;line-height:1.1;margin:12px 0 14px;font-weight:800;max-width:780px}
+header.hero p.lede{font-family:"Source Serif 4",Georgia,serif;font-size:19px;max-width:760px;color:#E9E7E3;margin:0 0 26px}
+.meta{display:flex;flex-wrap:wrap;gap:10px}
+.chip{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:6px 14px;font-size:13px;color:#fff}
+.chip b{color:var(--gold);font-weight:700}
+
+/* sections */
+section{padding:56px 0 8px}
+section h2{font-size:28px;font-weight:800;margin:0 0 6px;letter-spacing:-.01em}
+section h2 .num{display:inline-block;background:var(--gold);color:var(--black);font-size:14px;font-weight:800;border-radius:6px;padding:2px 9px;margin-right:12px;vertical-align:5px}
+.sub{color:var(--gray-2);max-width:780px;margin:0 0 24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid>*{min-width:0}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:900px){.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}header.hero h1{font-size:34px}}
+@media(max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr}}
+h3{font-size:16px;font-weight:700;margin:0 0 8px}
+.prose{font-family:"Source Serif 4",Georgia,serif;font-size:16.5px;line-height:1.65}
+.prose p{margin:0 0 12px}
+.muted{color:var(--gray-2)}
+.small{font-size:13px}
+
+/* findings */
+.finding{border-left:4px solid var(--gold);padding:4px 0 4px 16px}
+.finding .k{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gray-2)}
+.finding .v{font-size:17px;font-weight:700;margin:2px 0 6px}
+
+/* tiles */
+.tile{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px 16px;position:relative}
+.tile .lab{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray-2)}
+.tile .big{font-size:38px;font-weight:800;line-height:1.1;margin:6px 0 2px}
+.tile .big small{font-size:15px;font-weight:600;color:var(--gray-2);margin-left:4px}
+.tile .stat{font-size:13px;color:var(--gray-2)}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;letter-spacing:.06em;border-radius:6px;padding:3px 9px;margin-top:10px}
+.badge.CHEAP{background:var(--gold);color:var(--black)}
+.badge.RICH{background:var(--black);color:#fff}
+.badge.NEUTRAL{background:var(--mid);color:var(--black)}
+.badge:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.zbar{height:6px;background:var(--mid);border-radius:4px;margin-top:12px;position:relative}
+.zbar i{position:absolute;top:-4px;width:3px;height:14px;background:var(--black);border-radius:2px}
+.zbar:before,.zbar:after{content:"";position:absolute;top:0;height:6px;width:2px;background:var(--gray)}
+.zbar:before{left:33.33%}.zbar:after{left:66.66%}
+.zscale{display:flex;justify-content:space-between;font-size:10.5px;color:var(--gray-2);margin-top:4px}
+
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-2);font-weight:700;padding:8px 10px;border-bottom:2px solid var(--black)}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr.base td{font-weight:700;background:#FAFAF8}
+.tablewrap{overflow-x:auto}
+.trust{font-size:12px;font-weight:700;padding:2px 8px;border-radius:5px;white-space:nowrap}
+.trust.Usable{background:var(--good-tint);color:var(--good)}
+.trust.Thin{background:var(--bad-tint);color:var(--bad)}
+.trust.Baseline{background:var(--mid)}
+
+/* charts */
+.chartbox{position:relative;height:360px}
+.chartbox.sm{height:260px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+.seg button{font:inherit;font-size:13px;font-weight:600;border:0;background:none;padding:6px 12px;cursor:pointer;color:var(--ink)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--black);color:var(--gold)}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:12.5px;color:var(--gray-2);margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.sw{display:inline-block;width:18px;height:3px;background:var(--black);border-radius:2px}
+.sw.dash{background:repeating-linear-gradient(90deg,var(--gray-2) 0 5px,transparent 5px 9px)}
+.sw.band{height:10px;background:rgba(255,198,41,.35);border-radius:2px}
+.sw.cheap{height:10px;background:var(--gold-deep);border-radius:2px}
+.sw.rich{height:10px;background:var(--black);border-radius:2px}
+
+/* explain blocks */
+.explain{background:var(--gold-tint);border:1px solid #F5DE8F;border-radius:var(--radius);padding:16px 18px}
+.explain h3{display:flex;align-items:center;gap:8px}
+.explain h3:before{content:"?";display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--black);color:var(--gold);font-size:12px;font-weight:800}
+details{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:0 18px;margin-top:12px}
+details summary{cursor:pointer;font-weight:700;padding:14px 0;list-style:none;display:flex;align-items:center;gap:10px}
+details summary::-webkit-details-marker{display:none}
+details summary:before{content:"+";display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:var(--black);color:var(--gold);font-weight:800;flex:none}
+details[open] summary:before{content:"–"}
+details .body{padding:0 0 16px}
+code,.formula{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}
+.formula{display:block;background:var(--black);color:#F2EFE9;border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre-wrap;word-break:break-word;line-height:1.55;margin:8px 0}
+.formula .c{color:var(--gold)}
+
+/* steps */
+.steps{counter-reset:s;display:grid;gap:14px}
+.step{display:grid;grid-template-columns:40px minmax(0,1fr);gap:14px;align-items:start}
+.step:before{counter-increment:s;content:counter(s);display:grid;place-items:center;width:40px;height:40px;border-radius:10px;background:var(--black);color:var(--gold);font-weight:800;font-size:17px}
+.step h3{margin-top:8px}
+
+/* heatmap */
+.heat{border-collapse:separate;border-spacing:3px;font-size:13px}
+.heat th{border:0;text-align:center;padding:4px;text-transform:none;letter-spacing:0;font-size:12px}
+.heat th.row{text-align:right;padding-right:8px}
+.heat td{border:0;border-radius:6px;text-align:center;padding:10px 4px;font-weight:700;font-variant-numeric:tabular-nums;position:relative;min-width:72px}
+.heat td small{display:block;font-weight:500;font-size:10.5px;opacity:.8}
+.heat td.thin{background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.07) 0 2px,transparent 2px 7px)}
+.heat td.sel{outline:2px solid var(--black);outline-offset:1px}
+
+/* flow diagram */
+.flow{display:grid;grid-template-columns:1fr 40px 1fr 40px 1fr 40px 1fr;align-items:center;gap:0}
+.flow .col{display:grid;gap:8px}
+.node{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px}
+.node b{display:block;font-size:13.5px}
+.node.key{background:var(--black);color:#fff;border-color:var(--black)}
+.node.key b{color:var(--gold)}
+.node.in{background:var(--gold-tint);border-color:#F5DE8F}
+.arrow{text-align:center;font-size:20px;color:var(--gray-2)}
+@media(max-width:900px){.flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg);padding:4px 0}}
+
+footer{background:var(--black);color:#D8D5D0;margin-top:64px;padding:36px 0;font-size:13px}
+footer b{color:var(--gold)}
+.tag{display:inline-block;font-size:11.5px;font-weight:700;background:var(--mid);border-radius:5px;padding:2px 8px;margin:2px 4px 2px 0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+
+<nav class="top"><div class="wrap">
+  <span class="brand">Samuel Aoulou</span>
+  <a href="#summary">Summary</a>
+  <a href="#today">Today's read</a>
+  <a href="#history">Signal history</a>
+  <a href="#method">Method</a>
+  <a href="#backtest">Backtest</a>
+  <a href="#robust">Robustness</a>
+  <a href="#build">How it's built</a>
+  <a href="#limits">Limits &amp; next steps</a>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div class="eyebrow">KSU Student Managed Investment Fund · Fixed Income</div>
+  <h1>Credit Spread Valuation Model</h1>
+  <p class="lede">Is corporate credit cheap or expensive right now, and has that kind of reading ever paid off? I built this model in Excel to answer both questions, and then to test whether my own answer holds up.</p>
+  <div class="meta">
+    <span class="chip">Data through <b id="asof">Oct 20, 2026</b></span>
+    <span class="chip"><b id="ndays">9,602</b> trading days, 1990 to 2026</span>
+    <span class="chip">Excel · VBA · Bloomberg BDH · FRED</span>
+    <span class="chip"><span>Built by <b>Samuel Aoulou</b>, Finance BBA, Coles College of Business</span></span>
+  </div>
+</div></header>
+
+<main>
+<!-- SUMMARY -->
+<section id="summary"><div class="wrap">
+  <h2><span class="num">01</span>The short version</h2>
+  <p class="sub">What the model does, what it says today, and what the evidence says about trusting it.</p>
+  <div class="grid g3">
+    <div class="card finding">
+      <div class="k">The question</div>
+      <div class="v">Are investors being paid more or less than usual to take corporate credit risk?</div>
+      <div class="muted small">I measure option-adjusted spreads (OAS) for investment grade, BBB, A and high yield bonds against their own history, using a z-score and a percentile rank. A reading has to be extreme on both before it counts.</div>
+    </div>
+    <div class="card finding">
+      <div class="k">Today's read</div>
+      <div class="v" id="sumToday">IG is neutral. High yield screens cheap.</div>
+      <div class="muted small" id="sumTodayTxt"></div>
+    </div>
+    <div class="card finding">
+      <div class="k">Does it work?</div>
+      <div class="v">Partly. The "rich" signal leans the right way. The "cheap" signal does not have enough evidence.</div>
+      <div class="muted small">After tight-spread (RICH) days, LQD trailed duration-matched Treasuries by about 0.46% over the next 3 months versus a normal day, and the sign held in 10 of 12 settings. Neither side kept its sign in both halves of history, so I treat it as a lean, not a forecast.</div>
+    </div>
+  </div>
+</div></section>
+
+<!-- TODAY -->
+<section id="today"><div class="wrap">
+  <h2><span class="num">02</span>Today's read</h2>
+  <p class="sub">Each tile compares today's spread with the last 756 trading days (about 3 years). The marker on the bar shows the z-score on a scale of -3 to +3. Spread levels are not shown on this page, only the model's derived readings.</p>
+  <div class="grid g4" id="tiles"></div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>Reading by series</h3>
+    <div class="tablewrap"><table id="readTable">
+      <thead><tr><th>Series</th><th class="n">Z-score</th><th class="n">Pctl (3 yr)</th><th class="n">Pctl (all history)</th><th>Last month</th><th>Signal</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card">
+      <h3>In plain English</h3>
+      <div class="prose" id="plain"></div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>Overall read</h3>
+        <p style="margin:0 0 10px"><span class="badge NEUTRAL" id="conv">No IG signal</span></p>
+        <p class="small" id="breadth" style="margin:0 0 8px"></p>
+        <p class="small muted" id="size" style="margin:0"></p>
+      </div>
+      <div class="explain" style="margin-top:16px">
+        <h3>Why HY can read cheap while IG doesn't</h3>
+        <p class="small" style="margin:0">High yield widened much more than IG over the last month. That pushed the HY/IG ratio to the 99th percentile of the 3-year window. Across the full 36 years of history the same ratio only ranks at the 68th percentile. A short, calm window can make a normal reading look extreme, so the model reports both percentiles side by side.</p>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- HISTORY -->
+<section id="history"><div class="wrap">
+  <h2><span class="num">03</span>Signal history</h2>
+  <p class="sub">How often the investment grade signal read CHEAP, NEUTRAL or RICH in each year since 1990. This page publishes the model's outputs only. The spread data behind them comes from Bloomberg and is not republished here.</p>
+  <div class="card">
+    <h3>Share of trading days in each signal state, by year</h3>
+    <div class="chartbox"><canvas id="yearChart" aria-label="Share of days in each IG signal state by year"></canvas></div>
+    <div class="legend">
+      <span><i class="sw" style="height:10px;background:#D9A400"></i>CHEAP (wide vs history)</span>
+      <span><i class="sw" style="height:10px;background:#D9D7D3"></i>NEUTRAL</span>
+      <span><i class="sw" style="height:10px;background:#2D2926"></i>RICH (tight vs history)</span>
+      <span class="muted">1990 starts after the 126-day warm-up.</span>
+    </div>
+  </div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card">
+      <h3>The same reading against two yardsticks</h3>
+      <p class="small muted" style="margin:0 0 10px">Percentile of today's reading against the last 3 years and against all history. A higher bar means spreads were tighter on more days, so today is wider than usual.</p>
+      <div class="chartbox sm"><canvas id="pctChart" aria-label="Percentile against 3-year window and all history"></canvas></div>
+      <div class="legend">
+        <span><i class="sw" style="height:10px;background:#2D2926"></i>3-year window</span>
+        <span><i class="sw" style="height:10px;background:#D9A400"></i>All history</span>
+        <span><i class="sw dash"></i>CHEAP at 80%, RICH at 20%</span>
+      </div>
+    </div>
+    <div class="explain">
+      <h3>What the history shows</h3>
+      <p class="small">CHEAP comes in clusters: 1998 to 2002, 2007 to 2009, 2015 to 2016 and 2020. RICH dominates the calm stretches, such as 1993 to 1996, 2003 to 2004, 2013 to 2014, 2017 and 2024 to 2025.</p>
+      <p class="small">A year like 2008 was CHEAP for the whole year while spreads kept widening. That is why CHEAP is read as "paid more than usual" and not as "about to tighten".</p>
+      <p class="small">The left chart shows why the model reports two percentiles. Against the last 3 years, high yield screens wide. Against all 36 years, the IG, BBB, A and high yield readings all sit in the lower half, and the full history includes crisis periods like 2008 and 2020.</p>
+      <p class="small" style="margin:0">The clustering is also the reason the backtest counts <i>independent tests</i> and not just days.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- METHOD -->
+<section id="method"><div class="wrap">
+  <h2><span class="num">04</span>How the signal works</h2>
+  <p class="sub">The rules are simple on purpose. Every step is a formula you can click on in the workbook, and every threshold sits on one Inputs sheet.</p>
+  <div class="grid g2">
+    <div class="steps">
+      <div class="step"><div><h3>Measure distance from normal (z-score)</h3><p class="small muted" style="margin:0">How many standard deviations today's spread sits from its 756-day average. Under 1 is ordinary, 1 to 2 is notable, over 2 is rare.</p></div></div>
+      <div class="step"><div><h3>Rank today against the window (percentile)</h3><p class="small muted" style="margin:0">The share of days in the window when spreads were tighter than today. This is a second filter so one wide day in a quiet period is not enough.</p></div></div>
+      <div class="step"><div><h3>Both must agree</h3><p class="small muted" style="margin:0">CHEAP needs z ≥ +1.0 <b>and</b> percentile ≥ 80%. RICH is the mirror image. Anything else is NEUTRAL. CHEAP means you are paid more than usual, not that spreads will tighten.</p></div></div>
+      <div class="step"><div><h3>Check for confirmation</h3><p class="small muted" style="margin:0">A signal in IG is stronger when BBB says the same thing. Breadth counts how many of the six series agree, and one-month momentum shows whether spreads are still moving the same way.</p></div></div>
+      <div class="step"><div><h3>Size the opportunity</h3><p class="small muted" style="margin:0">If IG spreads went back to their average, what would that do to a bond fund's price? Price change ≈ −duration × change in spread. With LQD's 7.54-year duration, today's gap is worth about +0.10%.</p></div></div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>The actual formulas (Calc sheet, IG row)</h3>
+<code class="formula"><span class="c">Z-score</span>    =IF(D9=0,0,(B9-C9)/D9)
+<span class="c">Percentile</span> =PERCENTRANK(window, B9)
+<span class="c">Signal</span>     =IF(AND(E9&gt;=Inputs!B6, F9&gt;=Inputs!B7),"CHEAP",
+             IF(AND(E9&lt;=-Inputs!B6, F9&lt;=1-Inputs!B7),"RICH","NEUTRAL"))
+<span class="c">Conviction</span> =IF(H9="NEUTRAL","No IG signal",
+             IF(H10=H9,"Confirmed "&amp;H9,"Unconfirmed "&amp;H9))
+<span class="c">Price eff.</span> =-Inputs!B8*(C9-B9)/10000</code>
+        <p class="small muted" style="margin:6px 0 0">The window is built with <code>INDEX(Data!B:B,start):INDEX(Data!B:B,end)</code>, so it resizes automatically when new data is loaded. Nothing is hardcoded to a row number.</p>
+      </div>
+      <details>
+        <summary>Why use two filters instead of just the z-score?</summary>
+        <div class="body small">A z-score assumes spreads are roughly bell-shaped. They are not. They have long right tails from crises. In a window that contains one big spike, the standard deviation gets inflated and a meaningful move can look small. The percentile is rank-based and doesn't care about the shape of the distribution. Requiring both means a reading has to be unusual by distance <i>and</i> by rank.</div>
+      </details>
+      <details>
+        <summary>What is OAS, and why use it instead of yield?</summary>
+        <div class="body small">Option-adjusted spread is the extra yield a corporate bond pays over a Treasury, after removing the value of features like call options. Yield mixes two things together: the level of interest rates and the pay for credit risk. OAS isolates the credit piece, which is what this model is trying to value. 100 bps = 1 percentage point.</div>
+      </details>
+      <details>
+        <summary>Why a 756-day lookback?</summary>
+        <div class="body small">It is about three years of trading days, long enough to cover more than one market mood but short enough to reflect the current regime. It is also what FRED provides for free on these ICE BofA series. The Robustness section tests 504 days, 1,260 days and all history to check that the result doesn't depend on this one choice.</div>
+      </details>
+    </div>
+  </div>
+</div></section>
+
+<!-- BACKTEST -->
+<section id="backtest"><div class="wrap">
+  <h2><span class="num">05</span>Does the signal work?</h2>
+  <p class="sub">I tested the exact same rule on every day since LQD started trading. For each day I asked: over the next 63 trading days (about 3 months), did investment grade credit beat Treasuries with the same interest rate risk?</p>
+  <div class="grid g2">
+    <div class="card">
+      <h3>Edge vs an average day (63-day forward excess return)</h3>
+      <div class="chartbox sm"><canvas id="btChart" aria-label="Backtest edge chart"></canvas></div>
+      <p class="small muted" style="margin:10px 0 0">If the rule works, CHEAP should sit above zero (credit outperforms after wide spreads) and RICH below zero (credit lags after tight spreads).</p>
+    </div>
+    <div class="explain">
+      <h3>How I isolate the credit bet</h3>
+      <p class="small">LQD (corporate bonds) moves with both interest rates and credit spreads. To strip out the rate piece I subtract 1.10 dollars of IEF (Treasuries) for every dollar of LQD. That ratio is LQD's duration (7.54) divided by IEF's (6.85), so a rate move hits both sides about equally and what's left is the credit return.</p>
+<code class="formula"><span class="c">Excess</span> = LQD fwd return − (7.54 / 6.85) × IEF fwd return</code>
+      <p class="small"><b>Edge</b> is a bucket's average excess return minus the all-days average. LQD earns extra yield on a typical day, so beating zero isn't enough. A signal has to beat a normal day.</p>
+      <p class="small" style="margin:0"><b>No look-ahead:</b> every historical signal uses only the data available on that day, through a rolling window and a 126-day warm-up.</p>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>Scorecard</h3>
+    <div class="tablewrap"><table id="btTable">
+      <thead><tr><th>Signal bucket</th><th class="n">Days</th><th class="n">Independent tests</th><th class="n">Avg excess return</th><th class="n">Hit rate</th><th class="n">Edge vs all days</th><th class="n">IG OAS next 63d</th><th>Trust</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="grid g2" style="margin-top:14px">
+      <p class="small" style="margin:0" id="btCheap"></p>
+      <p class="small" style="margin:0" id="btRich"></p>
+    </div>
+  </div>
+  <details>
+    <summary>Why "independent tests" matter more than days</summary>
+    <div class="body small">Each day looks 63 days ahead, so back-to-back days share almost the same future. 898 CHEAP days is really about 898 ÷ 63 ≈ 14 separate looks at the market. I set a bar of 20 independent tests before a bucket is called <i>Usable</i>. Below that it is marked <i>Thin</i>, and its average should be read as an anecdote. Most backtests skip this step, and it is the easiest way to fool yourself with a big-looking sample.</div>
+  </details>
+</div></section>
+
+<!-- ROBUSTNESS -->
+<section id="robust"><div class="wrap">
+  <h2><span class="num">06</span>Does it hold up?</h2>
+  <p class="sub">A result that only appears at one setting is probably noise. I reran the backtest across 16 combinations of lookback window and z-score threshold, then split history in half.</p>
+  <div class="controls">
+    <div class="seg" id="heatSeg" role="group" aria-label="Signal side">
+      <button data-s="cheap" class="on">CHEAP side</button><button data-s="rich">RICH side</button>
+    </div>
+    <span class="small muted" id="heatNote"></span>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <h3>Edge by setting</h3>
+      <div class="tablewrap"><table class="heat" id="heat"></table></div>
+      <div class="legend">
+        <span><i class="sw" style="height:10px;background:var(--good)"></i>Supports the rule</span>
+        <span><i class="sw" style="height:10px;background:var(--bad)"></i>Works against it</span>
+        <span><i class="sw" style="height:10px;background-image:repeating-linear-gradient(135deg,#bbb 0 2px,transparent 2px 6px)"></i>Fewer than 20 independent tests</span>
+        <span><i class="sw" style="height:10px;width:12px;outline:2px solid var(--black);background:none"></i>Model's setting</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>First half vs second half of history</h3>
+      <p class="small muted" style="margin:0 0 10px">First half: Jan 1990 to May 2008 · Second half: May 2008 to Oct 2026. A rule that really works should keep the same sign in both.</p>
+      <div class="tablewrap"><table id="splitTable">
+        <thead><tr><th>Bucket</th><th class="n">1st half edge</th><th class="n">2nd half edge</th><th>Kept its sign?</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <p class="small" style="margin:14px 0 0" id="splitTxt"></p>
+    </div>
+  </div>
+  <div class="explain" style="margin-top:16px">
+    <h3>What I take from this</h3>
+    <p class="small" style="margin:0">The RICH side is the more believable half: tight spreads were followed by weaker credit returns in 10 of 12 testable settings. But it flipped sign between the two halves of history, and the CHEAP side is split 8 to 8 with almost no settings clearing the evidence bar. My honest conclusion is that spread valuation is useful context for the portfolio team, not a trading rule on its own. Reaching that conclusion, rather than presenting the best-looking cell, was the point of building the test.</p>
+  </div>
+</div></section>
+
+<!-- BUILD -->
+<section id="build"><div class="wrap">
+  <h2><span class="num">07</span>How it's built</h2>
+  <p class="sub">Thirteen sheets, one direction of flow. Inputs live in one place, raw data never mixes with formulas, and the Dashboard is 100% formulas, so nothing on it can be typed over.</p>
+  <div class="card">
+    <div class="flow">
+      <div class="col">
+        <div class="node in"><b>Data_Manual</b>FRED paste (free)</div>
+        <div class="node in"><b>Data_BBG</b>Live Bloomberg BDH pulls</div>
+        <div class="node in"><b>Data_Snapshot</b>Static copy, no terminal needed</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="col">
+        <div class="node key"><b>Data</b>One working sheet. A switch on Inputs picks the source. Converts Bloomberg % to bps. 10,000-row capacity.</div>
+        <div class="node"><b>Inputs</b>Lookback, thresholds, durations, horizon, warm-up, evidence bar</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="col">
+        <div class="node"><b>Calc</b>Level, avg, std dev, z, percentile, signal, momentum, conviction</div>
+        <div class="node"><b>Backtest</b>Rolling signal for every day, forward returns, scorecard</div>
+        <div class="node"><b>Sensitivity</b>16-setting grids, split-half test</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="col">
+        <div class="node key"><b>Dashboard</b>Tiles, plain-English readings, scorecard, robustness, charts, caveats</div>
+        <div class="node"><b>Chart_Data</b>Latest 780 rows for the charts</div>
+      </div>
+    </div>
+  </div>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card">
+      <h3>Three data routes, one switch</h3>
+      <p class="small" style="margin:0">Analysts without a Bloomberg terminal can paste free FRED data. With a terminal, BDH formulas pull 36 years of history. The Data sheet reads whichever source <code>Inputs!B11</code> names, so everything downstream is identical no matter where the numbers came from.</p>
+    </div>
+    <div class="card">
+      <h3>VBA snapshot macro</h3>
+      <p class="small" style="margin:0">Bloomberg formulas break on any computer without the add-in. I wrote an <code>UpdateSnapshot</code> macro that copies a live pull into static sheets so the team can open the model anywhere. It refuses to overwrite good data with an empty or broken pull, flags series with mismatched row counts, and asks before saving anything suspicious.</p>
+    </div>
+    <div class="card">
+      <h3>Guardrails built in</h3>
+      <p class="small" style="margin:0">A units check catches FRED data pasted in percent instead of bps. A red banner shows when sample data is loaded, so synthetic numbers never reach a presentation. Color coding follows banking convention: blue = input, black = formula, green = link.</p>
+    </div>
+  </div>
+  <details>
+    <summary>See the snapshot macro's safety checks</summary>
+    <div class="body">
+<code class="formula"><span class="c">' how many rows came back? (dates run down column A until the first non-date)</span>
+For r = 1 To MAX_ROWS + 1
+    If VarType(src(r, 1)) = vbDouble Then n = n + 1 Else Exit For
+Next r
+
+If n = 0 Then
+    MsgBox "Data_BBG has no Bloomberg data right now..." &amp; _
+           "The snapshot was NOT changed.", vbExclamation
+    Exit Sub
+End If
+
+<span class="c">' count good numbers per series and check they line up</span>
+For r = 1 To n
+    For c = 2 To 7
+        If VarType(src(r, c)) = vbDouble Then cnt(c) = cnt(c) + 1
+    Next c
+Next r
+If status &lt;&gt; "Aligned" Then answer = MsgBox(msg, vbYesNo + vbDefaultButton2)</code>
+    </div>
+  </details>
+</div></section>
+
+<!-- LIMITS -->
+<section id="limits"><div class="wrap">
+  <h2><span class="num">08</span>Limits and what's next</h2>
+  <div class="grid g2">
+    <div class="card">
+      <h3>What this model does not tell you</h3>
+      <ul class="small" style="margin:0;padding-left:18px">
+        <li>Spreads can stay rich or cheap for years. A signal is a mild lean, not a prediction.</li>
+        <li>A calm 3-year window can make today look extreme. Always compare with the all-history percentile.</li>
+        <li>Buckets marked Thin rest on a handful of independent episodes.</li>
+        <li>The backtest ignores trading costs, and LQD is a proxy for the IG index, not the index itself.</li>
+        <li>It makes no portfolio or weighting recommendation. It is one input for the team's decisions.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Next steps</h3>
+      <ul class="small" style="margin:0;padding-left:18px">
+        <li><b>Port to Python.</b> The Calc rows map directly to pandas rolling mean, rolling std and rank, so the model can plug into our fund's existing portfolio optimizer.</li>
+        <li><b>Make it forward-looking.</b> Run a principal component analysis on the yield curve to find what drives curve moves, then shock the curve and measure the effect at each duration.</li>
+        <li><b>Add macro context.</b> Use inflation and economic data to adjust assumptions and help screen for new holdings.</li>
+      </ul>
+      <p class="small muted" style="margin:12px 0 0">Skills used: <span class="tag">Fixed income</span><span class="tag">Credit spreads</span><span class="tag">Duration matching</span><span class="tag">Backtesting</span><span class="tag">Excel dynamic ranges</span><span class="tag">VBA</span><span class="tag">Bloomberg BDH</span><span class="tag">FRED</span></p>
+    </div>
+  </div>
+</div></section>
+</main>
+
+<footer><div class="wrap">
+  <p style="margin:0 0 6px"><b>Samuel Aoulou</b> · Fixed Income Sector Analyst, KSU Student Managed Investment Fund · Finance BBA, Kennesaw State University, May 2027</p>
+  <p style="margin:0 0 6px">aoulousam@gmail.com</p>
+  <p style="margin:0;opacity:.7">Source data: Bloomberg (US Corporate, Baa, A and High Yield OAS indices; LQD and IEF total returns). The underlying data is not republished here. Everything on this page is a statistic or result derived from it. For education and portfolio demonstration only, not investment advice. This is a personal project page and is not an official Kennesaw State University publication.</p>
+</div></footer>
+
+<script id="model-data" type="application/json">{"asof":"2026-10-20","ndays":9602,"first":"1990-01-01","window":756,"series":[{"name":"IG","z":0.15,"p":0.596,"pAll":0.221,"zAll":-0.58,"sig":"NEUTRAL","mom":"widening","chg_sign":1},{"name":"BBB","z":0.15,"p":0.597,"pAll":0.153,"zAll":-0.7,"sig":"NEUTRAL","mom":"widening","chg_sign":1},{"name":"A","z":-0.04,"p":0.564,"pAll":0.229,"zAll":-0.6,"sig":"NEUTRAL","mom":"widening","chg_sign":1},{"name":"HY","z":1.17,"p":0.892,"pAll":0.282,"zAll":-0.64,"sig":"CHEAP","mom":"widening","chg_sign":1},{"name":"HY/IG ratio","z":2.65,"p":0.989,"pAll":0.676,"zAll":0.19,"sig":"CHEAP","mom":"rising","chg_sign":1},{"name":"BBB minus A","z":0.61,"p":0.747,"pAll":0.146,"zAll":-0.76,"sig":"NEUTRAL","mom":"widening","chg_sign":1}],"by_year":[{"y":1990,"CHEAP":67,"NEUTRAL":43,"RICH":26,"none":125},{"y":1991,"CHEAP":42,"NEUTRAL":219,"RICH":0,"none":0},{"y":1992,"CHEAP":0,"NEUTRAL":241,"RICH":21,"none":0},{"y":1993,"CHEAP":0,"NEUTRAL":83,"RICH":178,"none":0},{"y":1994,"CHEAP":0,"NEUTRAL":110,"RICH":150,"none":0},{"y":1995,"CHEAP":0,"NEUTRAL":60,"RICH":200,"none":0},{"y":1996,"CHEAP":0,"NEUTRAL":0,"RICH":262,"none":0},{"y":1997,"CHEAP":44,"NEUTRAL":67,"RICH":150,"none":0},{"y":1998,"CHEAP":261,"NEUTRAL":0,"RICH":0,"none":0},{"y":1999,"CHEAP":173,"NEUTRAL":88,"RICH":0,"none":0},{"y":2000,"CHEAP":219,"NEUTRAL":41,"RICH":0,"none":0},{"y":2001,"CHEAP":144,"NEUTRAL":117,"RICH":0,"none":0},{"y":2002,"CHEAP":126,"NEUTRAL":135,"RICH":0,"none":0},{"y":2003,"CHEAP":0,"NEUTRAL":66,"RICH":195,"none":0},{"y":2004,"CHEAP":0,"NEUTRAL":7,"RICH":255,"none":0},{"y":2005,"CHEAP":0,"NEUTRAL":206,"RICH":54,"none":0},{"y":2006,"CHEAP":0,"NEUTRAL":260,"RICH":0,"none":0},{"y":2007,"CHEAP":138,"NEUTRAL":104,"RICH":19,"none":0},{"y":2008,"CHEAP":262,"NEUTRAL":0,"RICH":0,"none":0},{"y":2009,"CHEAP":85,"NEUTRAL":176,"RICH":0,"none":0},{"y":2010,"CHEAP":0,"NEUTRAL":261,"RICH":0,"none":0},{"y":2011,"CHEAP":0,"NEUTRAL":248,"RICH":12,"none":0},{"y":2012,"CHEAP":0,"NEUTRAL":206,"RICH":55,"none":0},{"y":2013,"CHEAP":0,"NEUTRAL":98,"RICH":163,"none":0},{"y":2014,"CHEAP":0,"NEUTRAL":69,"RICH":192,"none":0},{"y":2015,"CHEAP":130,"NEUTRAL":131,"RICH":0,"none":0},{"y":2016,"CHEAP":73,"NEUTRAL":188,"RICH":0,"none":0},{"y":2017,"CHEAP":0,"NEUTRAL":86,"RICH":174,"none":0},{"y":2018,"CHEAP":7,"NEUTRAL":198,"RICH":56,"none":0},{"y":2019,"CHEAP":13,"NEUTRAL":234,"RICH":14,"none":0},{"y":2020,"CHEAP":69,"NEUTRAL":159,"RICH":34,"none":0},{"y":2021,"CHEAP":0,"NEUTRAL":212,"RICH":49,"none":0},{"y":2022,"CHEAP":10,"NEUTRAL":250,"RICH":0,"none":0},{"y":2023,"CHEAP":27,"NEUTRAL":233,"RICH":0,"none":0},{"y":2024,"CHEAP":0,"NEUTRAL":101,"RICH":161,"none":0},{"y":2025,"CHEAP":0,"NEUTRAL":95,"RICH":166,"none":0},{"y":2026,"CHEAP":0,"NEUTRAL":146,"RICH":63,"none":0}],"overall":{"conviction":"No IG signal","cheap":2,"rich":0,"mom":"widening","price_effect":0.00102},"bt":[["CHEAP",898,14.253968253968255,-4.3551630919965005e-05,0.5189309576837416,-0.001838953960642986,"Thin"],["CHEAP, BBB confirms",842,13.365079365079366,-0.00012487365342044325,0.5213776722090261,-0.0019202759831434641,"Thin"],["NEUTRAL",3700,58.73015873015873,0.0043022774284109016,0.642972972972973,0.0025068750986878803,"Usable"],["RICH",1662,26.38095238095238,-0.002791876375744942,0.5228640192539109,-0.004587278705467963,"Usable"],["RICH, BBB confirms",1567,24.873015873015873,-0.002997000379981044,0.5124441608168475,-0.004792402709704065,"Usable"],["All days",6260,99.36507936507937,0.001795402329723021,0.5932907348242812,"baseline","Baseline"]],"bt_ig":[["CHEAP",2.8962962962962964,0.5264550264550265,2.969485163940231],["NEUTRAL",-2.7097435897435895,0.6196923076923077,-2.636554722099655],["RICH",2.6602491506228767,0.4960362400906002,2.733438018266811],["All days",-0.07318886764393456,0.5661780327172297,"baseline"]],"sens":{"cheap_edge":[[0.00018914035685282547,-9.552547058611928e-05,-1.1238075467936808e-05,0.008633439427088531],[-0.0007531498603663843,-0.0018389539606429772,-0.0032005576279390212,-0.006049246545024846],[0.005991768202123502,0.0038795968930504846,0.0004059020111067961,-0.0021486479231206195],[0.007223663325717998,0.0057151633023980394,0.0026854050298615686,-0.0001118852169540495]],"rich_edge":[[-0.00317275701688042,-0.005345161613044078,-0.007618669535182426,0.0026365320153926707],[-0.004719354349577454,-0.004587278705467954,-0.002696818795769361,0.003280608631695434],[-0.0038636921338947357,-0.0062031083894064,-0.004700688223466618,"n/a"],[-0.007642648266186233,"n/a","n/a","n/a"]],"cheap_tests":[[20.523809523809526,19.746031746031747,15.904761904761905,10.73015873015873],[15.396825396825397,14.253968253968255,12.015873015873016,9.73015873015873],[13.317460317460318,11.396825396825397,9.238095238095237,8.047619047619047],[15.873015873015873,12.571428571428571,9.238095238095237,7.984126984126984]],"rich_tests":[[37.93650793650794,29.07936507936508,10.19047619047619,1.3015873015873016],[37.84126984126984,26.38095238095238,8.317460317460318,1.3492063492063493],[36.77777777777778,24.19047619047619,6.888888888888889,0],[1.4444444444444444,0,0,0]]},"split":[["CHEAP, first half",327,5.190476190476191,-0.012083489478365789,-0.010392921561379127,0.363914373088685,6.381349507202426],["CHEAP, second half",571,9.063492063492063,0.00685147407155776,0.003936264499223484,0.6077057793345009,-5.1541155866900175],["RICH, first half",523,8.301587301587302,0.0017241021128185006,0.0034146700298051634,0.6347992351816444,-1.1198675496688741],["RICH, second half",1139,18.07936507936508,-0.004865499509650725,-0.0077807090819850015,0.47146619841966636,7.6716417910447765],["All days, first half",1522,24.158730158730158,-0.001690567916986663,"baseline",0.5466491458607096,2.377245508982036],["All days, second half",4738,75.2063492063492,0.0029152095723342765,"baseline",0.6082735331363445,-2.491557619248628]],"text":{"B28":"Conviction: No IG signal","B29":"Breadth: 2 of 6 series read CHEAP and 0 read RICH. IG momentum over the last month: widening.","B30":"Rough size of the move: if IG OAS returned to its 756-day average, an investment-grade bond fund with 7.5 years of duration would see about +0.10% from price (before carry).","B46":"CHEAP: 898 days, but only about 14.3 independent tests, because the signal clusters in a few stretches of time. That is too little evidence to say the signal works. Treat it as a mild lean, not a forecast.","B47":"RICH: 1,662 days, about 26.4 independent tests. LQD beat matched IEF after 52% of RICH days, versus 59% of all days. Enough tests to take the pattern seriously, though not as proof.","B57":"Other settings: across 16 combinations of lookback and z-threshold, the CHEAP edge is above zero in 8, and 1 of them have at least 20 independent tests. RICH: the edge is below zero in 10 of 12, with enough tests in 6.","B58":"First half vs second half of history: CHEAP edge was -1.04% then +0.39%; RICH edge was +0.34% then -0.78%. A rule that works should keep its sign in both halves.","B59":"Pick on the first half, test on the second: best CHEAP setting (All history, z 2.00) had an edge of +0.03% in the first half and +0.11% in the second (held up). Best RICH setting (1260 days, z 1.50): -0.02% then -0.71% (held up). The second half holds only 9.1 independent CHEAP tests at the Inputs setting, so a pass there is weak evidence."}}</script>
+<script>
+const D = JSON.parse(document.getElementById('model-data').textContent);
+const C = {black:'#2D2926', gold:'#FFC629', goldDeep:'#D9A400', gray:'#6B6865', line:'#E4E2DE', good:'#3E7D3A', bad:'#C2571A'};
+const pct = (v,d=0)=> (v*100).toFixed(d)+'%';
+const spct = (v,d=2)=> (v>=0?'+':'')+(v*100).toFixed(d)+'%';
+const sgn = (v,d=1)=> (v>=0?'+':'')+Number(v).toFixed(d);
+const fmtDate = s => new Date(s+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+
+/* ---------- Today ---------- */
+const SR = D.series; // {name,z,p,pAll,zAll,sig,mom,chg_sign}
+const labels = {'IG':'IG OAS','BBB':'BBB OAS','A':'A OAS','HY':'HY OAS','HY/IG ratio':'HY / IG ratio','BBB minus A':'BBB minus A'};
+const zf = v => Math.abs(v)<0.05 ? '0.0' : sgn(v,1);
+const yearsSpan = +D.asof.slice(0,4) - +D.first.slice(0,4);
+const tiles = document.getElementById('tiles');
+[0,1,3,4].forEach(i=>{
+  const r = SR[i], z = Math.max(-3,Math.min(3,r.z));
+  tiles.insertAdjacentHTML('beforeend',`
+    <div class="tile">
+      <div class="lab">${labels[r.name]}</div>
+      <div class="big">${zf(r.z)}<small>z-score</small></div>
+      <div class="stat">Tighter on ${pct(r.p)} of days (3 yr) · ${pct(r.pAll)} (all history)</div>
+      <span class="badge ${r.sig}">${r.sig}</span>
+      <div class="zbar"><i style="left:calc(${(z+3)/6*100}% - 1.5px)"></i></div>
+      <div class="zscale"><span>-3</span><span>-1</span><span>+1</span><span>+3</span></div>
+    </div>`);
+});
+const tb = document.querySelector('#readTable tbody');
+SR.forEach(r=>{
+  tb.insertAdjacentHTML('beforeend',`<tr><td><b>${labels[r.name]}</b></td><td class="n">${zf(r.z)}</td><td class="n">${pct(r.p)}</td><td class="n">${pct(r.pAll)}</td><td>${r.mom}</td><td><span class="badge ${r.sig}" style="margin:0">${r.sig}</span></td></tr>`);
+});
+function plain(r){
+  const z = `z ${zf(r.z)}`, win = pct(r.p), all = pct(r.pAll);
+  const verdict = {CHEAP:'wide versus recent history, so investors are paid more than usual for this risk',
+                   RICH:'tight versus recent history, so investors are paid less than usual',
+                   NEUTRAL:'ordinary: neither cheap nor rich'}[r.sig];
+  const mom = {widening:'Over the last month spreads have been widening.', tightening:'Over the last month spreads have been tightening.', steady:'Over the last month spreads have been steady.', rising:'Over the last month the ratio has been rising.', falling:'Over the last month the ratio has been falling.'}[r.mom] || '';
+  if(r.name==='HY/IG ratio'){
+    const second = Math.abs(r.p-r.pAll)>0.3 ? ` A reading this extreme on a short window deserves a second look: across all history it ranks at ${all}.` : '';
+    return `HY pays ${r.sig==='CHEAP'?'unusually more':r.sig==='RICH'?'unusually less':'about the usual amount'} compared with IG (${z}; the HY/IG ratio was lower on ${win} of days in the window).${second} ${mom}`;
+  }
+  if(r.name==='BBB minus A'){
+    return `The extra pay for stepping down from A to BBB is ${r.sig==='NEUTRAL'?'ordinary':verdict} (${z}; the gap was smaller on ${win} of days in the window). The gap has been ${r.mom} over the last month.`;
+  }
+  const nm = r.name==='HY' ? 'High yield' : r.name==='A' ? 'A-rated' : r.name;
+  return `${nm} spreads are ${verdict} (${z}; spreads were tighter on ${win} of days in the window). ${mom} Against all ${yearsSpan} years of history they rank at the ${all} percentile.`;
+}
+document.getElementById('plain').innerHTML = SR.map(r=>`<p>${plain(r)}</p>`).join('');
+document.getElementById('conv').textContent = D.text.B28.replace('Conviction: ','');
+document.getElementById('breadth').textContent = D.text.B29;
+document.getElementById('size').textContent = D.text.B30;
+const nCheap = SR.filter(r=>r.sig==='CHEAP').length, nRich = SR.filter(r=>r.sig==='RICH').length;
+document.getElementById('sumTodayTxt').textContent = `IG reads ${SR[0].sig.toLowerCase()} (${'z '+zf(SR[0].z)}; spreads were tighter on ${pct(SR[0].p)} of days in the window). High yield reads z ${zf(SR[3].z)} at the ${pct(SR[3].p)} percentile and has been ${SR[3].mom} over the last month. ${nCheap} of 6 series read CHEAP, ${nRich} read RICH.`;
+document.getElementById('asof').textContent = fmtDate(D.asof);
+document.getElementById('ndays').textContent = D.ndays.toLocaleString();
+
+/* ---------- Charts ---------- */
+Chart.defaults.font.family = 'Montserrat, system-ui, sans-serif';
+Chart.defaults.font.size = 11.5;
+Chart.defaults.color = C.gray;
+const tooltipBase = {backgroundColor:'#2D2926',titleColor:'#FFC629',bodyColor:'#fff',padding:10,cornerRadius:6,displayColors:false};
+function seg(id, fn){document.querySelectorAll('#'+id+' button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('on'));b.classList.add('on');fn(b.dataset);});}
+
+const BY = D.by_year.filter(y=>y.CHEAP+y.NEUTRAL+y.RICH>0);
+const tot = y=>y.CHEAP+y.NEUTRAL+y.RICH;
+new Chart(document.getElementById('yearChart'),{
+  type:'bar',
+  data:{labels:BY.map(y=>y.y), datasets:[
+    {label:'CHEAP',   data:BY.map(y=>100*y.CHEAP/tot(y)),   backgroundColor:'#D9A400', stack:'s', barPercentage:.86, categoryPercentage:1},
+    {label:'NEUTRAL', data:BY.map(y=>100*y.NEUTRAL/tot(y)), backgroundColor:'#D9D7D3', stack:'s', barPercentage:.86, categoryPercentage:1},
+    {label:'RICH',    data:BY.map(y=>100*y.RICH/tot(y)),    backgroundColor:'#2D2926', stack:'s', barPercentage:.86, categoryPercentage:1}
+  ]},
+  options:{maintainAspectRatio:false, animation:false, interaction:{mode:'index',intersect:false},
+    scales:{x:{stacked:true,grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:12}},
+            y:{stacked:true,min:0,max:100,grid:{color:C.line},border:{display:false},ticks:{callback:v=>v+'%'},title:{display:true,text:'Share of trading days'}}},
+    plugins:{legend:{display:false},tooltip:{...tooltipBase,displayColors:true,callbacks:{
+      title:it=>String(BY[it[0].dataIndex].y),
+      label:it=>`${it.dataset.label}: ${Math.round(it.raw)}%`,
+      footer:it=>`${tot(BY[it[0].dataIndex])} trading days with a signal`}}}}
+});
+
+const pctDatasets = [
+  {label:'3-year window', data:SR.map(r=>100*r.p),    backgroundColor:'#2D2926', borderRadius:3},
+  {label:'All history',   data:SR.map(r=>100*r.pAll), backgroundColor:'#D9A400', borderRadius:3},
+  {type:'line', label:'CHEAP threshold', data:SR.map(()=>80), borderColor:'#6B6865', borderDash:[5,4], borderWidth:1.5, pointRadius:0, pointHoverRadius:0},
+  {type:'line', label:'RICH threshold',  data:SR.map(()=>20), borderColor:'#6B6865', borderDash:[5,4], borderWidth:1.5, pointRadius:0, pointHoverRadius:0}
+];
+new Chart(document.getElementById('pctChart'),{
+  type:'bar',
+  data:{labels:SR.map(r=>labels[r.name]), datasets:pctDatasets},
+  options:{maintainAspectRatio:false, animation:false, interaction:{mode:'index',intersect:false},
+    scales:{x:{grid:{display:false},ticks:{maxRotation:0,font:{size:10.5}}},
+            y:{min:0,max:100,grid:{color:C.line},border:{display:false},ticks:{callback:v=>v+'%'}}},
+    plugins:{legend:{display:false},tooltip:{...tooltipBase,displayColors:true,filter:it=>it.datasetIndex<2,callbacks:{label:it=>`${it.dataset.label}: ${Math.round(it.raw)}th percentile`}}}}
+});
+
+/* ---------- Backtest ---------- */
+const bt=D.bt, btIG=D.bt_ig;
+const igNext = {'CHEAP':btIG[0][1],'NEUTRAL':btIG[1][1],'RICH':btIG[2][1],'All days':btIG[3][1]};
+const bb=document.querySelector('#btTable tbody');
+bt.forEach(r=>{
+  const base=r[0]==='All days';
+  const ig = igNext[r[0]];
+  bb.insertAdjacentHTML('beforeend',`<tr class="${base?'base':''}"><td>${r[0]}</td><td class="n">${r[1].toLocaleString()}</td><td class="n">${r[2].toFixed(1)}</td><td class="n">${spct(r[3])}</td><td class="n">${pct(r[4])}</td><td class="n">${base?'baseline':spct(r[5])}</td><td class="n">${ig==null?'<span class="muted">–</span>':sgn(ig)+' bps'}</td><td><span class="trust ${r[6]}">${r[6]}</span></td></tr>`);
+});
+document.getElementById('btCheap').innerHTML = '<b>CHEAP:</b> '+D.text.B46.replace(/^CHEAP: /,'');
+document.getElementById('btRich').innerHTML = '<b>RICH:</b> '+D.text.B47.replace(/^RICH: /,'');
+const btRows = bt.filter(r=>r[0]!=='All days');
+new Chart(document.getElementById('btChart'),{
+  type:'bar',
+  data:{labels:btRows.map(r=>r[0]), datasets:[{data:btRows.map(r=>+(r[5]*100).toFixed(3)), backgroundColor:btRows.map(r=>r[5]>=0?C.gold:C.black), borderRadius:4, borderSkipped:false, barPercentage:.6}]},
+  options:{indexAxis:'y', maintainAspectRatio:false, animation:false,
+    scales:{x:{grid:{color:C.line},border:{display:false},ticks:{callback:v=>(v>0?'+':'')+v.toFixed(2)+'%'},title:{display:true,text:'Edge vs all days (percentage points)'}}, y:{grid:{display:false},ticks:{color:C.black,font:{weight:600}}}},
+    plugins:{legend:{display:false},tooltip:{...tooltipBase,callbacks:{label:it=>{const r=btRows[it.dataIndex];return [`Edge: ${spct(r[5])}`,`Independent tests: ${r[2].toFixed(1)} (${r[6]})`,`Hit rate: ${pct(r[4])}`];}}}}}
+});
+
+/* ---------- Heatmap ---------- */
+const wins=['504 days','756 days','1,260 days','All history'], zs=['0.75','1.00','1.50','2.00'];
+function cellColor(v, side){
+  if(typeof v!=='number') return {bg:'#F1F0ED',fg:'#9A9794'};
+  const support = side==='cheap'? v : -v;   // positive = supports the rule
+  const t = Math.min(1, Math.abs(support)/0.008);
+  const mix=(a,b,t)=>a.map((x,i)=>Math.round(x+(b[i]-x)*t));
+  const mid=[238,237,234], g=[62,125,58], o=[194,87,26];
+  const c = mix(mid, support>=0?g:o, t);
+  return {bg:`rgb(${c})`, fg: t>.55?'#fff':'#1E1B19'};
+}
+function drawHeat(side){
+  const e=D.sens[side+'_edge'], n=D.sens[side+'_tests'];
+  let h='<tr><th></th>'+zs.map(z=>`<th>z ≥ ${z}</th>`).join('')+'</tr>';
+  e.forEach((row,i)=>{
+    h+=`<tr><th class="row">${wins[i]}</th>`+row.map((v,j)=>{
+      const c=cellColor(v,side), t=n[i][j], thin=(typeof t==='number' && t<20);
+      const sel = (i===1 && j===1)?' sel':'';
+      return `<td class="${thin?'thin':''}${sel}" style="background-color:${c.bg};color:${c.fg}" title="${wins[i]}, z ≥ ${zs[j]}: ${typeof v==='number'?spct(v):'n/a'} edge, ${typeof t==='number'?t.toFixed(1):'0'} independent tests">${typeof v==='number'?spct(v):'n/a'}<small>${typeof t==='number'?t.toFixed(0):0} tests</small></td>`;
+    }).join('')+'</tr>';
+  });
+  document.getElementById('heat').innerHTML='<caption class="sr">Edge by lookback and threshold</caption>'+h;
+  document.getElementById('heatNote').textContent = side==='cheap'
+    ? 'CHEAP works if the edge is positive. 8 of 16 settings are, and only 1 has 20+ tests.'
+    : 'RICH works if the edge is negative. 10 of 12 testable settings are, and 6 have 20+ tests.';
+}
+seg('heatSeg', d=>drawHeat(d.s)); drawHeat('cheap');
+
+/* ---------- Split ---------- */
+const sp=D.split, st=document.querySelector('#splitTable tbody');
+[['CHEAP',sp[0][4],sp[1][4]],['RICH',sp[2][4],sp[3][4]]].forEach(([k,a,b])=>{
+  const kept = Math.sign(a)===Math.sign(b);
+  st.insertAdjacentHTML('beforeend',`<tr><td><b>${k}</b></td><td class="n">${spct(a)}</td><td class="n">${spct(b)}</td><td>${kept?'<span class="trust Usable">Yes</span>':'<span class="trust Thin">No, it flipped</span>'}</td></tr>`);
+});
+document.getElementById('splitTxt').textContent = 'Separate check: ' + D.text.B59.replace(/^Pick on the first half, test on the second: /,'Choosing the best setting on the first half only, then testing it on the second: ');
+</script>
+</body>
+</html>
